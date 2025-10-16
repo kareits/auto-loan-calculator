@@ -56,9 +56,10 @@ principal_net = car_price * (1 - down_payment_percent / 100)
 loan_amount_display = principal_net + insurance_premium 
 
 # Субсидия от дистрибьютера
-st.subheader("Субсидия от дистрибьютера")
-has_subsidy = st.toggle("Наличие субсидии от дистрибьютера", value=False)
-
+has_subsidy = False
+if car_key == "new_car":
+    st.subheader("Субсидия от дистрибьютера")
+    has_subsidy = st.toggle("Наличие субсидии от дистрибьютера", value=False)
 subsidy_percent = 0
 subsidy_amount = 0
 if has_subsidy:
