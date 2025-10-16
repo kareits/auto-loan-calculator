@@ -53,6 +53,7 @@ auto-loan-calculator/
 ├── requirements.txt     # Список зависимостей
 ├── .gitignore           # Исключённые файлы и папки
 └── README.md            # Описание проекта
+```
 
 ## Автор
 kareits
