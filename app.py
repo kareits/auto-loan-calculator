@@ -1,6 +1,7 @@
 # КАЛЬКУЛЯТОР ДЛЯ АВТОКРЕДИТОВ
 import os
 
+import numpy_financial as npf
 import streamlit as st
 from PIL import Image
 
@@ -14,7 +15,6 @@ logo_path = os.path.join(os.path.dirname(__file__), "media", "solva_logo.png")
 logo_image = Image.open(logo_path)
 
 # Заголовок с логотипом
-# Отображение заголовка с логотипом
 col1, col2 = st.columns([1, 0.2])
 with col1:
     st.markdown(
@@ -66,7 +66,7 @@ else:
 
 # Сумма займа со страховой премией
 principal_net = car_price * (1 - down_payment_percent / 100)
-loan_amount_display = principal_net + insurance_premium 
+loan_amount = principal_net + insurance_premium 
 
 # Субсидия от дистрибьютера
 has_subsidy = False
@@ -82,26 +82,11 @@ if has_subsidy:
 else:
     st.write("Субсидия не применяется.")
 
-# Агентское вознаграждение
-st.subheader("Агентское вознаграждение дилерскому центру (с НДС)")
-agent_fee_percent = st.slider(
-    "Размер агентского вознаграждения (%)", 0.0, 10.0, 0.0, step=0.1
-)
-agent_fee_amount = principal_net * agent_fee_percent / 100
-st.write(
-    f"💸 Сумма агентского вознаграждения ДЦ: **{agent_fee_amount:,.0f} тенге**"
-)
-
-# Расчет суммы займа (с учетом субсидий и агентской комиссии)
-loan_amount = (
-    principal_net + insurance_premium - subsidy_amount + agent_fee_amount
-)
-
 # Срок займа
 st.subheader("Срок займа")
 loan_term = st.slider("Срок займа (в месяцах)", 0, 84, 60, step=12)
 
-# Расчет аннуитетного платежа
+# Расчет аннуитетного платежа и общей суммы вознаграждения
 rate = car_rate_dict[car_key]
 monthly_rate = rate / 12
 annuity_factor = (
@@ -109,47 +94,19 @@ annuity_factor = (
     / ((1 + monthly_rate) ** loan_term - 1)
 )
 monthly_payment = loan_amount * annuity_factor
-
-# Пересчет эффективной годовой ставки (APR)
-# Решаем обратную задачу: какая ставка даёт такой же платёж
-# при исходном долге без субсидии
-def find_effective_rate(principal, payment, term):
-    # численный подбор ставки методом Ньютона
-    r = 0.25 / 12  # начальное приближение
-    for _ in range(100):
-        annuity_factor = (r * (1 + r) ** term) / ((1 + r) ** term - 1)
-        f = principal * annuity_factor - payment
-        df = (
-            (
-                principal * ((1 + r) ** term * ((1 + r) ** term - 1)
-                             - (r * term * (1 + r) ** (term - 1)))
-            )
-            / ((1 + r) ** term - 1) ** 2
-        )
-        try:
-            r -= f / df
-        except ZeroDivisionError:
-            st.warning("⚠ Деление на ноль при расчете. Расчет остановлен.")
-            break
-        if abs(f) < 1e-6:
-            break
-        return r * 12  # годовая ставка
-if has_subsidy or agent_fee_percent:
-    effective_rate = find_effective_rate(
-        loan_amount_display, monthly_payment, loan_term
-    )
-
 total_payment = monthly_payment * loan_term
-overpayment = total_payment - loan_amount
+total_interest = total_payment - loan_amount
+if has_subsidy:
+    total_interest -= subsidy_amount
+    monthly_payment = (loan_amount + total_interest) / loan_term
+    monthly_rate = npf.rate(loan_term, -monthly_payment, loan_amount, 0, when=0)
+    rate = monthly_rate * 12
 
 st.markdown(f"## Результаты расчета")
-if has_subsidy and effective_rate < 0:
+if has_subsidy and rate < 0:
     st.write(f"#### Невозможно рассчитать. Измените первоначальный взнос и/или размер субсидий!")
 else:
-    st.write(f"#### 📊 Сумма займа: **{loan_amount_display:,.0f} тенге**")
-    if has_subsidy or agent_fee_percent:
-        st.write(f"#### 📈 Ставка вознаграждения: **{effective_rate * 100:.1f}% годовых**")
-    else:
-        st.write(f"#### 📈 Ставка вознаграждения: **{rate * 100:.1f}% годовых**")
+    st.write(f"#### 📊 Сумма займа: **{loan_amount:,.0f} тенге**")
+    st.write(f"#### 📈 Ставка вознаграждения: **{rate * 100:.1f}% годовых**")
     st.write(f"#### 💳 Ежемесячный платеж: {monthly_payment:,.0f} тенге")
-    st.write(f"#### 🧾 Сумма переплаты: {overpayment:,.0f} тенге")
+    st.write(f"#### 🧾 Сумма переплаты: {total_interest:,.0f} тенге")
