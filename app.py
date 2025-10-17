@@ -1,15 +1,28 @@
 # КАЛЬКУЛЯТОР ДЛЯ АВТОКРЕДИТОВ
+import os
 
 import streamlit as st
+from PIL import Image
 
 
 # Словари ставок
 car_rate_dict = {"used_car": 0.33, "new_car": 0.28}
 insurance_rates = {"new_car": 0.045, "used_car": 0.025}
 
-# Заголовок приложения
-st.title("Калькулятор автокредитования")
+# Путь к PNG-логотипу
+logo_path = os.path.join(os.path.dirname(__file__), "media", "solva_logo.png")
+logo_image = Image.open(logo_path)
 
+# Заголовок с логотипом
+# Отображение заголовка с логотипом
+col1, col2 = st.columns([1, 0.2])
+with col1:
+    st.markdown(
+        '<span style="font-size:32px; font-weight:bold;">Калькулятор автокредитования</span>',
+        unsafe_allow_html=True
+    )
+with col2:
+    st.image(logo_image, width=120)  # ширина 120 px
 
 # Выбор типа автомобиля
 car_type = st.selectbox(
