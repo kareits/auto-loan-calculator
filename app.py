@@ -171,11 +171,7 @@ components.html(
     <script>
         const btn = document.getElementById('copyBtn');
         btn.addEventListener('click', () => {{
-            navigator.clipboard.writeText(`{copy_text}`).then(() => {{
-                alert('✅ Данные скопированы! Теперь можно вставить в Excel (Ctrl+V)');
-            }}).catch(err => {{
-                alert('❌ Ошибка копирования: ' + err);
-            }});
+            navigator.clipboard.writeText(`{copy_text}`);
         }});
     </script>
     """,
