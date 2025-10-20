@@ -2,13 +2,16 @@
 import os
 
 import numpy_financial as npf
+import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image
 
 
-# Словари ставок
+# Словари ставок, тарифов страхования и первоначального взноса
 car_rate_dict = {"used_car": 0.33, "new_car": 0.28}
 insurance_rates = {"new_car": 0.045, "used_car": 0.025}
+default_down_payment = {"new_car": 20, "used_car": 30}
 
 # Путь к PNG-логотипу
 logo_path = os.path.join(os.path.dirname(__file__), "media", "solva_logo.png")
@@ -43,13 +46,12 @@ car_price = st.number_input(
 st.write(f"💰 Введенная стоимость автомобиля: **{car_price:,.0f} тенге**")
 
 # Первоначальный взнос
-if car_key == "new_car":
-    default_down_payment = 20
-else:
-    default_down_payment = 30
-
 down_payment_percent = st.slider(
-    "Первоначальный взнос (%)", 0, 100, default_down_payment, step=5
+    "Первоначальный взнос (%)",
+    0,
+    100,
+    default_down_payment.get(car_key, 30),
+    step=5
 )
 
 # Расчет страховой премии
@@ -89,11 +91,7 @@ loan_term = st.slider("Срок займа (в месяцах)", 0, 84, 60, step
 # Расчет аннуитетного платежа и общей суммы вознаграждения
 rate = car_rate_dict[car_key]
 monthly_rate = rate / 12
-annuity_factor = (
-    (monthly_rate * (1 + monthly_rate) ** loan_term)
-    / ((1 + monthly_rate) ** loan_term - 1)
-)
-monthly_payment = loan_amount * annuity_factor
+monthly_payment = -npf.pmt(monthly_rate, loan_term, loan_amount)
 total_payment = monthly_payment * loan_term
 total_interest = total_payment - loan_amount
 if has_subsidy:
@@ -106,7 +104,80 @@ st.markdown(f"## Результаты расчета")
 if has_subsidy and rate < 0:
     st.write(f"#### Невозможно рассчитать. Измените первоначальный взнос и/или размер субсидий!")
 else:
-    st.write(f"#### 📊 Сумма займа: **{loan_amount:,.0f} тенге**")
-    st.write(f"#### 📈 Ставка вознаграждения: **{rate * 100:.1f}% годовых**")
-    st.write(f"#### 💳 Ежемесячный платеж: {monthly_payment:,.0f} тенге")
-    st.write(f"#### 🧾 Сумма переплаты: {total_interest:,.0f} тенге")
+    st.write(f"#### 📊 Сумма займа: **{loan_amount:,.2f} тенге**")
+    st.write(f"#### 📈 Ставка вознаграждения: **{rate * 100:.2f}% годовых**")
+    st.write(f"#### 💳 Ежемесячный платеж: {monthly_payment:,.2f} тенге")
+    st.write(f"#### 🧾 Сумма переплаты: {total_interest:,.2f} тенге")
+
+# Функция форматирования чисел
+def format_number(value):
+    if isinstance(value, (int, float)):
+        return f"{value:.2f}".replace(".", ",")
+    return value
+
+# Формируем таблицу с результатами
+results_data = {
+    "Параметр": [
+        "Тип автомобиля",
+        "Стоимость автомобиля, ₸",
+        "Первоначальный взнос, %",
+        "Первоначальный взнос, ₸",
+        "Страховая премия, ₸",
+        "Субсидия, %",
+        "Субсидия, ₸",
+        "Срок займа, мес.",
+        "Ставка вознаграждения, % годовых",
+        "Сумма займа, ₸",
+        "Ежемесячный платеж, ₸",
+        "Переплата, ₸",
+    ],
+    "Значение": [
+        car_type,
+        format_number(car_price),
+        format_number(down_payment_percent),
+        format_number(car_price * down_payment_percent / 100),
+        format_number(insurance_premium),
+        format_number(subsidy_percent),
+        format_number(subsidy_amount),
+        format_number(loan_term),
+        format_number(rate * 100),
+        format_number(loan_amount),
+        format_number(monthly_payment),
+        format_number(total_interest),
+    ],
+}
+
+df_results = pd.DataFrame(results_data)
+
+# Формируем текст для копирования в TSV (табами)
+copy_text = df_results.to_csv(index=False, sep="\t", header=True)
+
+# Кнопка копирования (через HTML-компонент)
+components.html(
+    f"""
+    <button id="copyBtn"
+        style="
+            background-color:white;
+            color:#db330d;
+            padding:10px 16px;
+            border:2px solid #db330d;
+            border-radius:8px;
+            font-size:16px;
+            font-weight:600;
+            cursor:pointer;
+        ">
+        📎 Копировать в буфер
+    </button>
+    <script>
+        const btn = document.getElementById('copyBtn');
+        btn.addEventListener('click', () => {{
+            navigator.clipboard.writeText(`{copy_text}`).then(() => {{
+                alert('✅ Данные скопированы! Теперь можно вставить в Excel (Ctrl+V)');
+            }}).catch(err => {{
+                alert('❌ Ошибка копирования: ' + err);
+            }});
+        }});
+    </script>
+    """,
+    height=100,
+)
