@@ -1,11 +1,11 @@
 # КАЛЬКУЛЯТОР ДЛЯ АВТОКРЕДИТОВ
-import os
+# import os
 
 import numpy_financial as npf
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from PIL import Image
+# from PIL import Image
 
 
 # Словари ставок, тарифов страхования и первоначального взноса
@@ -13,19 +13,21 @@ car_rate_dict = {"used_car": 0.33, "new_car": 0.28}
 insurance_rates = {"new_car": 0.045, "used_car": 0.025}
 default_down_payment = {"new_car": 20, "used_car": 30}
 
-# Путь к PNG-логотипу
-logo_path = os.path.join(os.path.dirname(__file__), "media", "solva_logo.png")
-logo_image = Image.open(logo_path)
+# # Путь к PNG-логотипу
+# logo_path = os.path.join(os.path.dirname(__file__), "media", "solva_logo.png")
+# logo_image = Image.open(logo_path)
 
 # Заголовок с логотипом
-col1, col2 = st.columns([1, 0.2])
-with col1:
-    st.markdown(
-        '<span style="font-size:32px; font-weight:bold;">Калькулятор автокредитования</span>',
-        unsafe_allow_html=True
-    )
-with col2:
-    st.image(logo_image, width=120)  # ширина 120 px
+st.title("Калькулятор автокредитования 🚗")
+
+# col1, col2 = st.columns([1, 0.2])
+# with col1:
+#     st.markdown(
+#         '<span style="font-size:32px; font-weight:bold;">Калькулятор автокредитования</span>',
+#         unsafe_allow_html=True
+#     )
+# with col2:
+#     st.image(logo_image, width=120)  # ширина 120 px
 
 # Выбор типа автомобиля
 car_type = st.selectbox(
@@ -171,7 +173,11 @@ components.html(
     <script>
         const btn = document.getElementById('copyBtn');
         btn.addEventListener('click', () => {{
-            navigator.clipboard.writeText(`{copy_text}`);
+            navigator.clipboard.writeText(`{copy_text}`).then(() => {{
+                alert('✅ Данные скопированы! Теперь можно вставить в Excel (Ctrl+V)');
+            }}).catch(err => {{
+                alert('❌ Ошибка копирования: ' + err);
+            }});
         }});
     </script>
     """,
